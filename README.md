@@ -1,13 +1,8 @@
 # Warp Agent CLI for Termux
 
-
 Unofficial installer. Runs Warp Agent CLI on ARM64 Android via Termux + Ubuntu PRoot. Also installs [Tailcat](https://github.com/tailscale/tailcat) and a Termux:API bridge.
 
 Use Termux from [F-Droid](https://f-droid.org/packages/com.termux/) or [GitHub](https://github.com/termux/termux-app/releases), not Play Store.
-
-<p align="center">
-  <img src="warp-agent-cli.png" alt="PocketCode" width="600">
-</p>
 
 ## Install
 
@@ -19,6 +14,8 @@ Safe to re-run. Already-installed Termux:API CLI, Tailcat, and Warp are skipped.
 
 ## Start
 
+Login is in the Warp TUI. Just run:
+
 ```bash
 warp-agent
 ```
@@ -27,7 +24,16 @@ warp-agent
 proot-distro login ubuntu --bind "$HOME/.warp-termux-api:/bridge"
 ```
 
-`warp-agent` is already on PATH. No alias needed.
+## Broker
+
+Telegram / WhatsApp / stdin → one Warp conversation per external thread.
+
+```bash
+python -m broker --channel stdin
+TELEGRAM_BOT_TOKEN=... python -m broker --channel telegram
+```
+
+See [broker/README.md](broker/README.md).
 
 ## Tailcat
 
@@ -78,10 +84,6 @@ ssh -p 8022 u0_aXXX@PHONE_LAN_IP
 warp-agent
 ```
 
-```bash
-sftp -P 8022 u0_aXXX@PHONE_LAN_IP
-```
-
 Off-LAN: Tailcat, Tailscale, or ZeroTier. Do not forward port 22.
 
 ## Update
@@ -89,8 +91,6 @@ Off-LAN: Tailcat, Tailscale, or ZeroTier. Do not forward port 22.
 ```bash
 proot-distro login ubuntu -- bash -c "apt-get update && apt-get install --only-upgrade warp"
 ```
-
-Re-run the installer to refresh wrappers, Tailcat, and the API bridge.
 
 ## License
 
