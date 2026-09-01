@@ -57,6 +57,33 @@ If you want to perform direct Linux terminal work inside the underlying PRoot co
 proot-distro login ubuntu
 ```
 
+## Quick Launch Shortcut
+
+You do **not** need to run `proot-distro login ubuntu` every time. The installer already creates a global `warp-agent` command in Termux `$PREFIX/bin` that wraps:
+
+```bash
+proot-distro login ubuntu -- exec warp
+```
+
+After `setup.sh` finishes, this works from a normal Termux prompt:
+
+```bash
+warp-agent
+warp-agent login
+warp-agent "Explain the directory structure of this project"
+```
+
+### Optional: add a shell alias instead
+
+If you prefer an alias in your main Termux `.bashrc` or `.zshrc` (for example after a manual install):
+
+```bash
+echo 'alias warp-agent="proot-distro login ubuntu -- exec warp"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+For zsh, append to `~/.zshrc` instead of `~/.bashrc`. The installer wrapper is preferred because it works in any shell without sourcing rc files.
+
 ## How It Works
 
 Base Termux uses Android's native Bionic libc standard library instead of glibc. Desktop and server binaries compiled for general ARM64 Linux (such as Warp Agent CLI) cannot execute natively in base Termux without runtime modifications.
