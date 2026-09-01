@@ -98,19 +98,17 @@ apt-get update -y && apt-get upgrade -y
 echo "==> Installing Ubuntu tools..."
 apt-get install -y curl ca-certificates gnupg tar wget sudo python3
 
-if command -v warp >/dev/null 2>&1 || command -v oz >/dev/null 2>&1; then
+WARP_BIN="/root/.local/bin/warp"
+if test -x "${WARP_BIN}" && "${WARP_BIN}" -V >/dev/null 2>&1; then
   echo "==> Warp Agent CLI already installed. Skipping download."
 else
-  WORK_DIR=$(mktemp -d)
-  cd "$WORK_DIR"
-  echo "==> Downloading Warp Agent CLI debian package..."
-  curl -fSL "https://app.warp.dev/download/agent-cli?format=deb&arch=aarch64" -o warp-cli.deb
-  echo "==> Installing Warp Agent CLI package..."
-  dpkg -i warp-cli.deb || apt-get install -f -y
-  rm -rf "$WORK_DIR"
+  echo "==> Installing Warp Agent CLI via the official installer..."
+  curl -fsSL "https://app.warp.dev/download/agent-cli?format=deb&arch=aarch64" | bash
 fi
+ln -sf "${WARP_BIN}" /usr/local/bin/warp
 
-if command -v tailcat >/dev/null 2>&1; then
+TAILCAT_BIN="/usr/bin/tailcat"
+if test -x "${TAILCAT_BIN}"; then
   echo "==> Tailcat already installed. Skipping download."
   tailcat version 2>/dev/null || true
 else
@@ -205,16 +203,17 @@ do
 done
 
 echo "==> Verification inside Ubuntu..."
-if command -v warp >/dev/null 2>&1 || command -v oz >/dev/null 2>&1; then
+if test -x /root/.local/bin/warp && /root/.local/bin/warp -V >/dev/null 2>&1; then
   echo "Warp CLI installed successfully inside Ubuntu!"
+  /root/.local/bin/warp -V
 else
-  echo "Warning: Warp binary not found immediately in standard PATH."
+  echo "Warning: Warp binary not found in /root/.local/bin."
 fi
-if command -v tailcat >/dev/null 2>&1; then
+if test -x /usr/bin/tailcat; then
   echo "Tailcat installed successfully inside Ubuntu!"
-  tailcat version 2>/dev/null || true
+  /usr/bin/tailcat version 2>/dev/null || true
 else
-  echo "Warning: tailcat not found in PATH."
+  echo "Warning: tailcat not found in /usr/bin."
 fi
 UBUNTU_EOF
 )
@@ -308,13 +307,9 @@ if ! pgrep -f '[w]arp-termux-api-bridge' >/dev/null 2>&1; then
   nohup warp-termux-api-bridge >/dev/null 2>&1 &
 fi
 
-if [ "${1:-}" = "login" ]; then
-  echo -e "\033[0;34m[Warp Launcher]\033[0m Starting login flow... Copy any link shown into your browser."
-fi
-
 exec proot-distro login ubuntu \
   --bind "${BRIDGE}:/bridge" \
-  -- exec warp "$@"
+  -- exec /root/.local/bin/warp "$@"
 EOF
 chmod +x "${PREFIX}/bin/warp-agent"
 
@@ -324,19 +319,16 @@ echo -e "${GREEN}======================================================${NC}"
 echo -e "${BOLD}          HOW TO RUN WARP AGENT CLI ON TERMUX${NC}"
 echo -e "${GREEN}======================================================${NC}"
 echo ""
-echo -e "1. Authenticate:"
-echo -e "   ${YELLOW}warp-agent login${NC}"
-echo ""
-echo -e "2. Launch the agent:"
+echo -e "1. Launch the agent (the TUI handles login on first run):"
 echo -e "   ${YELLOW}warp-agent${NC}"
 echo ""
-echo -e "3. Ubuntu shell:"
+echo -e "2. Ubuntu shell:"
 echo -e "   ${YELLOW}proot-distro login ubuntu --bind \"\$HOME/.warp-termux-api:/bridge\"${NC}"
 echo ""
-echo -e "4. Tailcat (not started automatically). Example inbound listener:"
+echo -e "3. Tailcat (not started automatically). Example inbound listener:"
 echo -e "   ${YELLOW}tailcat serve --key=default 8022${NC}"
 echo -e "   Then share the printed tc… address out of band."
 echo ""
-echo -e "5. Termux:API from Warp (requires the Termux:API Android app):"
+echo -e "4. Termux:API from Warp (requires the Termux:API Android app):"
 echo -e "   ${YELLOW}termux-api battery-status${NC}   ${YELLOW}termux-api toast -- \"hello\"${NC}"
 echo ""

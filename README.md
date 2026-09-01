@@ -24,7 +24,7 @@ warp-agent
 ```
 
 ```bash
-proot-distro login ubuntu --bind "$HOME/.warp-termu1x-api:/bridge"
+proot-distro login ubuntu --bind "$HOME/.warp-termux-api:/bridge"
 ```
 
 `warp-agent` is already on PATH. No alias needed.
