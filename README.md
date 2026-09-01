@@ -2,7 +2,7 @@
 
 **Disclaimer:** This project is an unofficial community workaround to run Warp Agent CLI on Android devices via Termux using a lightweight Ubuntu PRoot container environment.
 
-This repository provides an automated installation script that provisions a standard Linux glibc sub-environment inside Termux, installs the aarch64 ARM64 Warp Agent CLI binary, and configures a global launcher command for seamless access.
+This repository provides an automated installation script that provisions a standard Linux glibc sub-environment inside Termux, installs the aarch64 ARM64 Warp Agent CLI binary, installs [Tailcat](https://github.com/tailscale/tailcat) for the agent to use as a tool, and wires a Termux:API bridge so Warp can call on-device Android APIs.
 
 ## Quick Start (One-Line Installer)
 
@@ -54,15 +54,15 @@ warp-agent "Explain the directory structure of this project"
 If you want to perform direct Linux terminal work inside the underlying PRoot container:
 
 ```bash
-proot-distro login ubuntu
+proot-distro login ubuntu --bind "$HOME/.warp-termux-api:/bridge"
 ```
 
 ## Quick Launch Shortcut
 
-You do **not** need to run `proot-distro login ubuntu` every time. The installer already creates a global `warp-agent` command in Termux `$PREFIX/bin` that wraps:
+You do **not** need to run `proot-distro login ubuntu` every time. The installer already creates a global `warp-agent` command in Termux `$PREFIX/bin` that starts the Termux:API bridge and wraps:
 
 ```bash
-proot-distro login ubuntu -- exec warp
+proot-distro login ubuntu --bind "$HOME/.warp-termux-api:/bridge" -- exec warp
 ```
 
 After `setup.sh` finishes, this works from a normal Termux prompt:
@@ -78,11 +78,52 @@ warp-agent "Explain the directory structure of this project"
 If you prefer an alias in your main Termux `.bashrc` or `.zshrc` (for example after a manual install):
 
 ```bash
-echo 'alias warp-agent="proot-distro login ubuntu -- exec warp"' >> ~/.bashrc
+echo 'alias warp-agent="proot-distro login ubuntu --bind \"$HOME/.warp-termux-api:/bridge\" -- exec warp"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
 For zsh, append to `~/.zshrc` instead of `~/.bashrc`. The installer wrapper is preferred because it works in any shell without sourcing rc files.
+
+## Tailcat
+
+The installer puts the official **linux arm64** Tailcat binary inside Ubuntu (glibc) and a `tailcat` wrapper in Termux `$PREFIX/bin`. Warp can call `tailcat` directly as a shell tool. A listener is **not** started for you.
+
+```bash
+# inbound tunnel to Termux sshd (if you enabled 8022), or any local port
+tailcat serve --key=default 8022
+
+# auth-free Tailcat SSH into the Ubuntu shell that is running the listener
+tailcat serve no-auth-ssh
+
+# from another machine that also has Tailcat
+tailcat ssh tcXXXXXXXXX
+tailcat ping tcXXXXXXXXX
+```
+
+Share the printed `tc…` address out of band. `no-auth-ssh` is authenticated only by possession of that token; prefer a saved key and `tailcat serve --allow=nodekey:…`.
+
+Keep a dedicated Termux session (or `termux-wake-lock`) for `tailcat serve`. Do not start the listener only inside a `warp-agent` session — it dies when the agent exits.
+
+## Termux:API from Warp
+
+Warp runs inside Ubuntu PRoot, so it cannot exec Termux’s Bionic `termux-*` helpers directly. The installer adds a host bridge:
+
+1. Termux package `termux-api` plus the **Termux:API Android app** (F-Droid or GitHub, same source as Termux).
+2. Host daemon `warp-termux-api-bridge` (started automatically by `warp-agent`).
+3. Ubuntu command `termux-api`, mounted at `/bridge`.
+
+From Warp (or an Ubuntu shell launched via `warp-agent`):
+
+```bash
+termux-api battery-status
+termux-api toast -- "build finished"
+termux-api clipboard-get
+termux-tts-speak "hello"
+termux-vibrate
+termux-location
+```
+
+Grant the matching Android permissions in Termux:API. The bridge allowlists `termux-*` API commands only.
 
 ## SSH Access From Other Devices
 
@@ -124,7 +165,7 @@ Once inside Termux:
 ```bash
 warp-agent
 # or
-proot-distro login ubuntu
+proot-distro login ubuntu --bind "$HOME/.warp-termux-api:/bridge"
 ```
 
 SFTP uses the same port:
@@ -184,7 +225,7 @@ ssh -p 8023 root@PHONE_LAN_IP
 Carrier NAT and most home routers block inbound `8022` from the internet. Do **not** forward port 22. Options that work without root:
 
 - Same Wi-Fi: `ssh -p 8022 user@PHONE_LAN_IP`
-- Away from home: Tailscale, ZeroTier, or a reverse tunnel from the phone
+- Away from home: Tailcat (`tailcat serve`), Tailscale, ZeroTier, or a reverse tunnel from the phone
 - Agent web servers (`localhost:3000`, etc.) are already reachable in the phone browser; from another device use `http://PHONE_LAN_IP:PORT` on the same LAN, or the mesh VPN IP off-LAN
 
 Android may still kill Termux in the background. Disable battery optimization for Termux and hold a wake lock.
@@ -198,7 +239,9 @@ This repository solves that limitation automatically:
 1. **Verifies Environment:** Ensures you are executing on an ARM64 Android device running Termux.
 2. **Installs PRoot Distro:** Installs `proot-distro` to create an isolated Ubuntu ARM64 userspace.
 3. **Deploys Warp Agent:** Ingests the official Debian `.deb` ARM64 package from Warp inside the Ubuntu container.
-4. **Creates Wrapper Shortcut:** Adds a global shell executable (`warp-agent`) inside Termux's `$PREFIX/bin`, bridging commands seamlessly into the PRoot sub-shell.
+4. **Installs Tailcat:** Places the official linux arm64 Tailcat package in Ubuntu and a Termux wrapper so both you and Warp can use it.
+5. **Bridges Termux:API:** Runs allowlisted `termux-*` commands on the Termux host and exposes them to Warp as `termux-api`.
+6. **Creates Wrapper Shortcut:** Adds `warp-agent` in Termux `$PREFIX/bin`, binds `~/.warp-termux-api` at `/bridge`, and starts the API daemon.
 
 ## Recommended Tips & Workarounds
 
@@ -214,7 +257,7 @@ proot-distro login ubuntu -- bash -c "apt-get update && apt-get install --only-u
 
 ```text
 warp-agent-cli/
-├── setup.sh     # Automated installation script
+├── setup.sh     # Automated installation script (Warp, Tailcat, Termux:API bridge)
 ├── README.md    # Getting started documentation
 └── LICENSE      # MIT License
 ```
