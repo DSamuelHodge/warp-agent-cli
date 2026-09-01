@@ -1,8 +1,13 @@
 # Warp Agent CLI for Termux
 
+
 Unofficial installer. Runs Warp Agent CLI on ARM64 Android via Termux + Ubuntu PRoot. Also installs [Tailcat](https://github.com/tailscale/tailcat) and a Termux:API bridge.
 
 Use Termux from [F-Droid](https://f-droid.org/packages/com.termux/) or [GitHub](https://github.com/termux/termux-app/releases), not Play Store.
+
+<p align="center">
+  <img src="warpagentcli.png" alt="PocketCode" width="600">
+</p>
 
 ## Install
 
