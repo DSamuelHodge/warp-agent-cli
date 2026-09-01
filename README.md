@@ -10,6 +10,8 @@ Use Termux from [F-Droid](https://f-droid.org/packages/com.termux/) or [GitHub](
 curl -sL https://raw.githubusercontent.com/DSamuelHodge/warp-agent-cli/main/setup.sh | bash
 ```
 
+Safe to re-run. Already-installed Termux:API CLI, Tailcat, and Warp are skipped. The Termux:API **app** still has to come from F-Droid or GitHub.
+
 ## Start
 
 ```bash
