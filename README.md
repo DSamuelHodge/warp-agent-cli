@@ -20,13 +20,11 @@ Safe to re-run. Already-installed Termux:API CLI, Tailcat, and Warp are skipped.
 ## Start
 
 ```bash
-warp-agent login
 warp-agent
-warp-agent "Explain this project"
 ```
 
 ```bash
-proot-distro login ubuntu --bind "$HOME/.warp-termux-api:/bridge"
+proot-distro login ubuntu --bind "$HOME/.warp-termu1x-api:/bridge"
 ```
 
 `warp-agent` is already on PATH. No alias needed.
