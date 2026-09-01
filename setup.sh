@@ -32,16 +32,46 @@ fi
 
 success "Termux ARM64 environment verified!"
 
-info "Updating Termux packages..."
-pkg update -y || warn "Failed to update package indices. Attempting to continue..."
+pkg_ok() {
+  dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"
+}
 
-info "Installing prerequisite Termux packages (proot-distro, curl, termux-api)..."
-pkg install -y proot-distro curl termux-api || error "Failed to install required Termux packages."
+termux_api_app_ok() {
+  [ -d "/data/data/com.termux.api" ] && return 0
+  command -v cmd >/dev/null 2>&1 && cmd package list packages 2>/dev/null | grep -q "package:com.termux.api" && return 0
+  [ -x /system/bin/pm ] && /system/bin/pm list packages 2>/dev/null | grep -q "package:com.termux.api" && return 0
+  return 1
+}
+
+NEED_PKG=()
+for p in proot-distro curl termux-api; do
+  if pkg_ok "$p"; then
+    info "$p already installed."
+  else
+    NEED_PKG+=("$p")
+  fi
+done
+
+if [ "${#NEED_PKG[@]}" -gt 0 ]; then
+  info "Updating Termux packages..."
+  pkg update -y || warn "Failed to update package indices. Attempting to continue..."
+  info "Installing missing Termux packages: ${NEED_PKG[*]}"
+  pkg install -y "${NEED_PKG[@]}" || error "Failed to install required Termux packages."
+else
+  info "Termux packages already present (proot-distro, curl, termux-api)."
+fi
 
 if ! command -v termux-battery-status >/dev/null 2>&1; then
-  warn "termux-api package is installed but helpers are missing from PATH."
+  warn "termux-api CLI helpers are missing from PATH."
 fi
-warn "Install the Termux:API Android app from F-Droid or GitHub (not Play Store) or API calls will fail."
+
+if termux_api_app_ok; then
+  success "Termux:API Android app is installed."
+else
+  warn "Termux:API Android app is not installed. CLI package alone is not enough."
+  warn "Install it from F-Droid: https://f-droid.org/packages/com.termux.api/"
+  warn "or GitHub: https://github.com/termux/termux-api/releases"
+fi
 
 info "Checking PRoot Ubuntu installation..."
 UBUNTU_ROOTFS="${PREFIX:-/data/data/com.termux/files/usr}/var/lib/proot-distro/installed-rootfs/ubuntu"
@@ -68,16 +98,26 @@ apt-get update -y && apt-get upgrade -y
 echo "==> Installing Ubuntu tools..."
 apt-get install -y curl ca-certificates gnupg tar wget sudo python3
 
-WORK_DIR=$(mktemp -d)
-cd "$WORK_DIR"
+if command -v warp >/dev/null 2>&1 || command -v oz >/dev/null 2>&1; then
+  echo "==> Warp Agent CLI already installed. Skipping download."
+else
+  WORK_DIR=$(mktemp -d)
+  cd "$WORK_DIR"
+  echo "==> Downloading Warp Agent CLI debian package..."
+  curl -fSL "https://app.warp.dev/download/agent-cli?format=deb&arch=aarch64" -o warp-cli.deb
+  echo "==> Installing Warp Agent CLI package..."
+  dpkg -i warp-cli.deb || apt-get install -f -y
+  rm -rf "$WORK_DIR"
+fi
 
-echo "==> Downloading Warp Agent CLI debian package..."
-curl -fSL "https://app.warp.dev/download/agent-cli?format=deb&arch=aarch64" -o warp-cli.deb
-echo "==> Installing Warp Agent CLI package..."
-dpkg -i warp-cli.deb || apt-get install -f -y
-
-echo "==> Downloading Tailcat linux arm64 package..."
-TAILCAT_DEB_URL=$(python3 - << 'PY'
+if command -v tailcat >/dev/null 2>&1; then
+  echo "==> Tailcat already installed. Skipping download."
+  tailcat version 2>/dev/null || true
+else
+  WORK_DIR=$(mktemp -d)
+  cd "$WORK_DIR"
+  echo "==> Downloading Tailcat linux arm64 package..."
+  TAILCAT_DEB_URL=$(python3 - << 'PY'
 import json, urllib.request
 req = urllib.request.Request(
     "https://api.github.com/repos/tailscale/tailcat/releases/latest",
@@ -94,11 +134,11 @@ else:
     raise SystemExit("no linux_arm64.deb in latest Tailcat release")
 PY
 )
-curl -fSL "$TAILCAT_DEB_URL" -o tailcat.deb
-echo "==> Installing Tailcat package..."
-dpkg -i tailcat.deb || apt-get install -f -y
-
-rm -rf "$WORK_DIR"
+  curl -fSL "$TAILCAT_DEB_URL" -o tailcat.deb
+  echo "==> Installing Tailcat package..."
+  dpkg -i tailcat.deb || apt-get install -f -y
+  rm -rf "$WORK_DIR"
+fi
 
 echo "==> Installing Termux:API client wrapper for Warp..."
 cat > /usr/local/bin/termux-api << 'WRAP'
