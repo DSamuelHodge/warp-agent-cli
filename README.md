@@ -6,7 +6,7 @@ Unofficial installer. Runs Warp Agent CLI on ARM64 Android via Termux + Ubuntu P
 Use Termux from [F-Droid](https://f-droid.org/packages/com.termux/) or [GitHub](https://github.com/termux/termux-app/releases), not Play Store.
 
 <p align="center">
-  <img src="warpagentcli.png" alt="PocketCode" width="600">
+  <img src="warp-agent-cli.png" alt="PocketCode" width="600">
 </p>
 
 ## Install
