@@ -39,6 +39,14 @@ See [broker/README.md](broker/README.md).
 
 Binary lives in Ubuntu. Termux `tailcat` wraps it. Listener is not started for you.
 
+Generate a key once with an explicit region (`--region=list` for choices):
+
+```bash
+tailcat genkey --key=default --region=tok
+```
+
+Then serve — `8022` is your Termux sshd, so the token gives you SSH from anywhere:
+
 ```bash
 termux-wake-lock
 tailcat serve --key=default 8022
@@ -50,6 +58,8 @@ tailcat ping tcXXXXXXXXX
 ```
 
 Share the `tc…` address out of band. Keep `serve` in its own Termux session — it dies with `warp-agent`.
+
+Pin an explicit region: `serve` with the default `--region=auto` runs a netcheck at startup, and its `SO_BINDTODEVICE` call is denied inside proot on Android — the server never prints its token. An explicit region skips that check. (Avoid `--fixed-region`; it needs the same netcheck at genkey time.)
 
 ## Termux:API
 

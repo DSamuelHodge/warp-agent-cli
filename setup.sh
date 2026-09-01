@@ -256,9 +256,9 @@ while true; do
     mapfile -t lines < "$req"
     cmd="${lines[0]:-}"
     args=()
-    if [ "${#lines[@]}" -gt 1 ]; then
-      args=("${lines[@]:1}")
-    fi
+    for a in "${lines[@]:1}"; do
+      [ -n "$a" ] && args+=("$a")
+    done
     if ! allowed "$cmd"; then
       echo "blocked command: ${cmd}" > "${QUEUE}/${id}.err"
       echo 126 > "${QUEUE}/${id}.rc"
